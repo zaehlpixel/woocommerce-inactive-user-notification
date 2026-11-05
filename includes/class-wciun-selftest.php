@@ -111,22 +111,24 @@ final class WCIUN_Selftest {
 			'detail'   => $sql_ok ? 'Die Bedingungen der Sperre sind in der Abfrage enthalten.' : 'Die Bedingungen der Sperre fehlen in der Abfrage.',
 		);
 
-		$sched_ok = function_exists( 'as_next_scheduled_action' ) && false !== as_next_scheduled_action( WCIUN_Scanner::HOOK_DAILY );
+		// as_next_scheduled_action() liefert true, solange die Aktion gerade läuft, sonst den Zeitstempel oder false.
+		$next     = function_exists( 'as_next_scheduled_action' ) ? as_next_scheduled_action( WCIUN_Scanner::HOOK_DAILY ) : false;
+		$sched_ok = false !== $next;
 		$checks[] = array(
 			'id'       => 'scheduler',
 			'label'    => 'Täglicher Lauf des Plugins geplant',
 			'ok'       => $sched_ok,
 			'required' => true,
-			'detail'   => $sched_ok ? 'Nächster Lauf: ' . wp_date( 'd.m.Y H:i', (int) as_next_scheduled_action( WCIUN_Scanner::HOOK_DAILY ) ) : 'Keine geplante Aktion gefunden.',
+			'detail'   => self::next_run_text( $next, 'Keine geplante Aktion gefunden.' ),
 		);
 
 		$woo_next = function_exists( 'as_next_scheduled_action' ) ? as_next_scheduled_action( 'woocommerce_cleanup_personal_data' ) : false;
 		$checks[] = array(
 			'id'       => 'wc_cleanup',
 			'label'    => 'WooCommerce-Bereinigung geplant (Information)',
-			'ok'       => (bool) $woo_next,
+			'ok'       => false !== $woo_next,
 			'required' => false,
-			'detail'   => $woo_next ? 'Nächster Lauf: ' . wp_date( 'd.m.Y H:i', (int) $woo_next ) : 'Keine geplante Bereinigung gefunden.',
+			'detail'   => self::next_run_text( $woo_next, 'Keine geplante Bereinigung gefunden.' ),
 		);
 
 		$ok = true;
@@ -142,6 +144,20 @@ final class WCIUN_Selftest {
 		);
 		update_option( self::OPTION, $result, false );
 		return $result;
+	}
+
+	/**
+	 * Text zum Ergebnis von as_next_scheduled_action().
+	 *
+	 * @param int|bool $next    Zeitstempel, true (läuft gerade) oder false (nicht geplant).
+	 * @param string   $missing Text, wenn nichts geplant ist.
+	 * @return string
+	 */
+	private static function next_run_text( $next, $missing ) {
+		if ( true === $next ) {
+			return 'Läuft gerade.';
+		}
+		return false === $next ? $missing : 'Nächster Lauf: ' . wp_date( 'd.m.Y H:i', (int) $next );
 	}
 
 	/**

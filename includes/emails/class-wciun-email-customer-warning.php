@@ -105,7 +105,8 @@ if ( ! class_exists( 'WCIUN_Email_Customer_Warning', false ) && class_exists( 'W
 				$name = __( 'Kundin, Kunde', 'wciun' );
 			}
 
-			$date_format = get_option( 'date_format' );
+			// Der Text ist deutsch, daher ein festes, in jeder Sprache eindeutiges Datumsformat (änderbar per Filter).
+			$date_format = (string) apply_filters( 'wciun_date_format', 'd.m.Y' );
 			$contact     = $this->get_reply_to_enabled() && is_email( $this->get_reply_to_address() ) ? $this->get_reply_to_address() : $this->get_from_address();
 
 			$this->data = array(

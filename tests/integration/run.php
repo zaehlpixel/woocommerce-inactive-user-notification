@@ -395,7 +395,7 @@ foreach ( array( 'yes', 'no' ) as $improvements ) {
 			continue;
 		}
 		$body = $m['message'];
-		t_ok( false !== strpos( $body, wp_date( get_option( 'date_format' ), $earliest ) ), "$tag frühestes Datum steht im Text" );
+		t_ok( false !== strpos( $body, wp_date( 'd.m.Y', $earliest ) ), "$tag frühestes Datum steht im Text" );
 		t_ok( false !== strpos( $body, wc_get_page_permalink( 'myaccount' ) ), "$tag Link auf Mein Konto" );
 		t_ok( false !== strpos( $body, 'mail_1' ), "$tag Benutzername" );
 		if ( 'html' === $type ) {
