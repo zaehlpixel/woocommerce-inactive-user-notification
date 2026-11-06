@@ -367,8 +367,15 @@ t_reset_world();
 
 // ==============================================================================================================
 t_section( '9. Selbsttest' );
-$r = WCIUN_Selftest::run();
-t_ok( $r['ok'], 'Selbsttest besteht mit WooCommerce ' . WC_VERSION );
+$r   = WCIUN_Selftest::run();
+$bad = array_filter(
+	$r['checks'],
+	static function ( $c ) {
+		return $c['required'] && ! $c['ok'] && 'wc_version' !== $c['id']; // Die Versionsbestätigung erfolgt erst nach diesem Test.
+	}
+);
+t_ok( ! $bad, 'Alle Pflichtprüfungen des Selbsttests bestehen mit WooCommerce ' . WC_VERSION . ( $bad ? ' (fehlt: ' . implode( ', ', array_column( $bad, 'id' ) ) . ')' : '' ) );
+t_ok( in_array( WC_VERSION, WCIUN_Selftest::tested_versions(), true ) === (bool) array_values( array_filter( $r['checks'], static function ( $c ) { return 'wc_version' === $c['id']; } ) )[0]['ok'], 'Versionsprüfung entspricht der Liste geprüfter Versionen' );
 add_filter( 'wciun_tested_wc_versions', static function () { return array( '1.0.0' ); } );
 $r = WCIUN_Selftest::run();
 t_ok( ! $r['ok'], 'unbekannte WooCommerce-Version: Selbsttest schlägt an' );

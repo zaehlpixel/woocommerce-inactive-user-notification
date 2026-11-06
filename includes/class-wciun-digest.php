@@ -192,18 +192,31 @@ final class WCIUN_Digest {
 		);
 
 		$news = ( $summary['sent'] ?? 0 ) + ( $summary['would_send'] ?? 0 ) + ( $summary['test_sent'] ?? 0 ) + ( $summary['failed'] ?? 0 ) + ( $d['counters']['reactivated'] ?? 0 );
-		$hash = md5( wp_json_encode( array( $counts, $problems, $alerts, $payload['mode'] ) ) );
 		if ( ! $news && ! $problems && ! $alerts ) {
 			return false;
 		}
-		// Gleicher Inhalt wie beim letzten Mal und nichts Neues: nicht erneut versenden.
-		if ( ! $alerts && ! $news && $hash === $d['last_hash'] ) {
+		// Die Prüfsumme enthält nur den dauerhaften Zustand, nicht die Zähler dieses Laufs. Ein unverändertes
+		// Problem ohne Neues wird höchstens einmal pro Woche wiederholt.
+		$hash = md5(
+			wp_json_encode(
+				array(
+					$problems,
+					$alerts,
+					$payload['mode'],
+					$counts['Konten ohne gültige E-Mail-Adresse'],
+					$counts['Konten mit wiederholtem Versandfehler'],
+					$counts['Konten mit unklarem Versandergebnis'],
+				)
+			)
+		);
+		if ( ! $alerts && ! $news && $hash === $d['last_hash'] && time() - (int) ( $d['last_sent'] ?? 0 ) < WEEK_IN_SECONDS ) {
 			return false;
 		}
 		if ( ! self::send( $payload ) ) {
 			return false;
 		}
 		$d['last_hash'] = $hash;
+		$d['last_sent'] = time();
 		$d['counters']  = array();
 		$d['alerts']    = array();
 		update_option( self::OPTION, $d, false );

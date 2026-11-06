@@ -9,7 +9,7 @@ aufbewahren“), und zwar ohne jede Vorwarnung. Dieses Plugin ergänzt:
 3. eine **Löschsperre**: WooCommerce darf ein Konto erst löschen, wenn dessen Warnung mindestens so alt ist wie die
    Vorlaufzeit. Die Löschung selbst bleibt bei WooCommerce. Das Plugin löscht nie etwas.
 
-Geprüft gegen WooCommerce **11.2.2** und WordPress 7.1.4. Es gibt keine Rechtsberatung: Die angemessene
+Geprüft gegen WooCommerce **11.2.1 und 11.2.2** (Integrationstest mit echtem WooCommerce-Code, HPOS an und aus) und WordPress 7.1.4. Es gibt keine Rechtsberatung: Die angemessene
 Aufbewahrungsdauer legt der Betreiber fest.
 
 ## Wie die Sperre funktioniert

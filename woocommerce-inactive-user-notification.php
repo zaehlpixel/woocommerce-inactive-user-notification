@@ -26,7 +26,7 @@ define( 'WCIUN_DIR', plugin_dir_path( __FILE__ ) );
  * WooCommerce-Versionen, gegen die die Löschsperre getestet wurde.
  * Weitere Versionen kann ein Administrator nach eigener Prüfung bestätigen.
  */
-define( 'WCIUN_TESTED_WC_VERSIONS', '11.2.2' );
+define( 'WCIUN_TESTED_WC_VERSIONS', '11.2.1, 11.2.2' );
 
 require_once WCIUN_DIR . 'includes/class-wciun-calc.php';
 require_once WCIUN_DIR . 'includes/class-wciun-settings.php';
