@@ -444,6 +444,88 @@ t_ok( 'a@example.test, b@example.test' === WCIUN_Settings::team_recipients(), 'm
 t_reset_world();
 
 // ==============================================================================================================
+t_section( '13. Mehrere Blöcke: 130 Konten (Blockgröße 50) im Live-Modus und im Trockenlauf' );
+t_retention( 36 );
+
+/** Führt die Kette der Folgeaktionen aus, so wie Action Scheduler es täte. */
+function t_scan_chain() {
+	as_unschedule_all_actions( WCIUN_Scanner::HOOK_BATCH ); // Altlasten früherer Abschnitte (Aktionen mit alter Lauf-Kennung).
+	WCIUN_Scanner::start();
+	$blocks = 0;
+	while ( $blocks < 20 && get_option( WCIUN_Scanner::RUN_OPTION ) ) {
+		$pending = as_get_scheduled_actions(
+			array(
+				'hook'     => WCIUN_Scanner::HOOK_BATCH,
+				'status'   => ActionScheduler_Store::STATUS_PENDING,
+				'per_page' => 1,
+				'orderby'  => 'date',
+				'order'    => 'ASC',
+			),
+			'ids'
+		);
+		if ( ! $pending ) {
+			break;
+		}
+		$store  = ActionScheduler::store();
+		$action = $store->fetch_action( $pending[0] );
+		$store->mark_complete( $pending[0] );
+		do_action_ref_array( WCIUN_Scanner::HOOK_BATCH, $action->get_args() );
+		++$blocks;
+	}
+	return array( get_option( WCIUN_Scanner::LAST_OPTION ), $blocks );
+}
+
+$ids = array();
+for ( $i = 1; $i <= 130; $i++ ) {
+	$ids[] = t_user( sprintf( 'mass_%03d', $i ), 40 );
+}
+t_settings( array( 'mode' => 'dry_run' ) );
+list( $sum, $blocks ) = t_scan_chain();
+t_ok( 130 === (int) $sum['would_send'], "Trockenlauf über Blöcke: 130 gefunden (erhalten: {$sum['would_send']}, Blöcke: $blocks)" );
+t_ok( 3 === $blocks, "drei Blöcke bei 130 Konten (erhalten: $blocks)" );
+t_ok( 0 === count( array_filter( $GLOBALS['t_mails'], static function ( $m ) { return false !== strpos( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'], 'mass_' ); } ) ), 'Trockenlauf verschickt keine Kundenmails' );
+
+t_settings( array( 'mode' => 'live', 'daily_limit' => 1000 ) );
+$GLOBALS['t_mails'] = array();
+list( $sum, $blocks ) = t_scan_chain();
+t_ok( 130 === (int) $sum['sent'], "live über Blöcke: 130 verschickt (erhalten: {$sum['sent']}, Blöcke: $blocks)" );
+$per_user = array();
+foreach ( $GLOBALS['t_mails'] as $m ) {
+	$to = is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'];
+	if ( false !== strpos( $to, 'mass_' ) ) {
+		$per_user[ $to ] = ( $per_user[ $to ] ?? 0 ) + 1;
+	}
+}
+t_ok( 130 === count( $per_user ) && 1 === max( $per_user ), 'jedes der 130 Konten bekam genau eine Mail, keines doppelt oder keins vergessen' );
+$marked = 0;
+foreach ( $ids as $uid ) {
+	if ( WCIUN_Markers::has_marker( $uid ) ) {
+		++$marked;
+	}
+}
+t_ok( 130 === $marked, "alle 130 Konten haben eine Markierung (erhalten: $marked)" );
+t_ok( 0 === t_wc_delete(), 'WooCommerce löscht heute keines der 130 Konten' );
+$GLOBALS['t_mails'] = array();
+list( $sum ) = t_scan_chain();
+t_ok( 0 === (int) $sum['sent'], 'zweiter Lauf über Blöcke verschickt nichts erneut' );
+
+t_settings( array( 'mode' => 'live', 'daily_limit' => 60 ) );
+foreach ( $ids as $uid ) {
+	WCIUN_Markers::clear( $uid );
+}
+delete_option( WCIUN_Digest::COUNTER );
+$GLOBALS['t_mails'] = array();
+list( $sum, $blocks ) = t_scan_chain();
+t_ok( 60 === (int) $sum['sent'] && ! empty( $sum['limit_hit'] ), "Tageslimit 60 über Blöcke: genau 60 verschickt (erhalten: {$sum['sent']})" );
+delete_option( WCIUN_Digest::COUNTER );
+list( $sum ) = t_scan_chain();
+t_ok( 60 === (int) $sum['sent'], "am nächsten Tag weitere 60 (erhalten: {$sum['sent']})" );
+delete_option( WCIUN_Digest::COUNTER );
+list( $sum ) = t_scan_chain();
+t_ok( 10 === (int) $sum['sent'] && empty( $sum['limit_hit'] ), "am dritten Tag die restlichen 10 (erhalten: {$sum['sent']})" );
+t_reset_world();
+
+// ==============================================================================================================
 t_section( '12. Einstellungen werden bereinigt' );
 $s = WCIUN_Settings::sanitize( array( 'mode' => 'drop table', 'lead_days' => 5, 'daily_limit' => 99999, 'test_recipient' => 'nope', 'team_recipients' => "x@y.de\nz" ) );
 t_ok( 'dry_run' === $s['mode'] && 14 === $s['lead_days'] && 1000 === $s['daily_limit'] && '' === $s['test_recipient'] && 'x@y.de' === $s['team_recipients'], 'ungültige Werte werden auf sichere Werte gesetzt' );
